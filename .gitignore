@@ -36,6 +36,5 @@ out/
 *.log
 
 # Workspace Specific
-push.ps1
 .agents/
 .gemini/
