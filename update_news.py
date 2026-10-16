@@ -1,12 +1,14 @@
 import os
 import json
 import re
+import time
 from datetime import datetime
 import zoneinfo
 import urllib.request
 import xml.etree.ElementTree as ET
 from google import genai
 from google.genai import types
+from google.genai.errors import ServerError, APIError
 
 # 1. 환경 변수 및 날짜 설정 (KST)
 KST = zoneinfo.ZoneInfo("Asia/Seoul")
@@ -83,16 +85,41 @@ system_prompt = f"""당신은 최고 수준의 거시경제 데이터 애널리�
 
 user_prompt = f"다음 기사 목록을 분석하여 위 스키마에 맞는 유효한 JSON을 생성하세요:\n\n{news_context}"
 
-# 4. API 에러 로그에서 권장한 gemini-3.8-flash 호출
-response = client.models.generate_content(
-    model='gemini-3.8-flash',
-    contents=user_prompt,
-    config=types.GenerateContentConfig(
-        system_instruction=system_prompt,
-        response_mime_type="application/json",
-        temperature=0.2,
-    ),
-)
+# 4. 503 과부하 방지: 모델 다중화(Fallback) 및 재시도 로직
+target_models = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.5-pro']
+response = None
+
+for model_name in target_models:
+    for attempt in range(1, 4):
+        try:
+            print(f"[{model_name}] 호출 시도 중... (시도 {attempt}/3)")
+            response = client.models.generate_content(
+                model=model_name,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    response_mime_type="application/json",
+                    temperature=0.2,
+                ),
+            )
+            if response and response.text:
+                break
+        except (ServerError, APIError) as e:
+            print(f"[{model_name}] 서버 응답 오류({e.code if hasattr(e, 'code') else 'Error'}): {e.message if hasattr(e, 'message') else e}")
+            if attempt < 3:
+                wait_time = attempt * 5  # 5초, 10초 대기 후 재시도
+                print(f"{wait_time}초 후 재시도합니다...")
+                time.sleep(wait_time)
+        except Exception as e:
+            print(f"[{model_name}] 일반 예외 발생: {e}")
+            break
+            
+    if response and response.text:
+        print(f"[{model_name}] 모델을 통해 성공적으로 데이터를 받았습니다.")
+        break
+
+if not response or not response.text:
+    raise RuntimeError("모든 대체 모델에서 응답을 받지 못했습니다.")
 
 result_text = response.text.strip()
 if result_text.startswith("```json"):
