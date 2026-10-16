@@ -1,7 +1,6 @@
 import os
 import json
 import re
-import time
 from datetime import datetime
 import zoneinfo
 import urllib.request
@@ -19,7 +18,7 @@ if not GEMINI_API_KEY:
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# 2. 경제 뉴스 RSS 수집 (연합뉴스 경제 RSS)
+# 2. 경제 뉴스 RSS 수집
 RSS_URL = "https://www.yna.co.kr/rss/economy.xml"
 req = urllib.request.Request(
     RSS_URL,
@@ -43,13 +42,13 @@ except Exception as e:
 
 news_context = "\n---\n".join(articles)
 
-# 3. 프롬프트 및 JSON 스키마 지시문
+# 3. 프롬프트 지시문
 system_prompt = f"""당신은 최고 수준의 거시경제 데이터 애널리스트이자 구조화 데이터 처리 엔진입니다.
 제공된 당일 경제 기사 요약 텍스트를 분석하여 웹 프론트엔드 연동용 JSON을 생성하십시오.
 
 [엄격한 제약조건]
 1. 순수 객관성 및 팩트 기반 작성 (주관적 단정 금지).
-2. 마크다운 기호 없이 오직 JSON 형식으로만 응답할 것.
+2. 마크다운 기호 없이 오직 유효한 JSON 형식으로만 응답할 것.
 3. 기각 조건(falsification_condition)에는 구체적인 데이터 수치와 선행 지표를 명시할 것.
 4. 오늘 날짜는 {today_str} 입니다.
 5. top_news는 반드시 5개를 작성할 것.
@@ -84,41 +83,20 @@ system_prompt = f"""당신은 최고 수준의 거시경제 데이터 애널리�
 
 user_prompt = f"다음 기사 목록을 분석하여 위 스키마에 맞는 유효한 JSON을 생성하세요:\n\n{news_context}"
 
-# 4. 최신 gemini-3.8-flash 모델 우선 호출 (트래픽 급증 시 재시도 및 폴백 지원)
-candidate_models = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash']
-response = None
-
-for model_name in candidate_models:
-    for attempt in range(1, 4):
-        try:
-            print(f"[{model_name}] API 호출 시도 ({attempt}/3)...")
-            response = client.models.generate_content(
-                model=model_name,
-                contents=user_prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    response_mime_type="application/json",
-                    temperature=0.2,
-                ),
-            )
-            if response and response.text:
-                print(f"[{model_name}] 모델 응답 수신 완료!")
-                break
-        except Exception as e:
-            print(f"[{model_name}] 호출 중 오류 (시도 {attempt}/3): {e}")
-            if attempt < 3:
-                time.sleep(3)
-    if response and response.text:
-        break
-
-if not response or not response.text:
-    raise RuntimeError("Gemini API 호출에 모두 실패했습니다.")
+# 4. API 에러 로그에서 권장한 gemini-3.8-flash 호출
+response = client.models.generate_content(
+    model='gemini-3.8-flash',
+    contents=user_prompt,
+    config=types.GenerateContentConfig(
+        system_instruction=system_prompt,
+        response_mime_type="application/json",
+        temperature=0.2,
+    ),
+)
 
 result_text = response.text.strip()
 if result_text.startswith("```json"):
     result_text = result_text[7:]
-elif result_text.startswith("```"):
-    result_text = result_text[3:]
 if result_text.endswith("```"):
     result_text = result_text[:-3]
 result_text = result_text.strip()
