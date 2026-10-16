@@ -95,6 +95,18 @@
       border-radius: 10px;
     }
 
+    /* 스켈레톤 펄스 애니메이션 */
+    .skeleton-box {
+      background: linear-gradient(90deg, rgba(230,230,230,0.6) 25%, rgba(245,245,245,0.9) 50%, rgba(230,230,230,0.6) 75%);
+      background-size: 200% 100%;
+      animation: skeletonLoading 1.5s infinite;
+      border-radius: 6px;
+    }
+    @keyframes skeletonLoading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
     /* 커스텀 스크롤바 */
     ::-webkit-scrollbar {
       width: 6px;
@@ -139,10 +151,14 @@
     <!-- 0. 유틸리티 바 (인쇄, 클립보드 복사, 데이터 변경/검사 모달) -->
     <header class="no-print flex flex-wrap items-center justify-between gap-3 pb-4 mb-6 border-b border-neutral-200 text-xs text-subtext font-mono">
       <div class="flex items-center gap-2">
-        <span class="inline-block w-2 h-2 rounded-full bg-neutral-800 animate-pulse"></span>
-        <span class="font-medium tracking-tight">MACRO INTELLIGENCE SYSTEM &bull; LIVE FEED</span>
+        <span id="liveFeedDot" class="inline-block w-2 h-2 rounded-full bg-neutral-800 animate-pulse"></span>
+        <span id="liveFeedStatus" class="font-medium tracking-tight">MACRO INTELLIGENCE SYSTEM &bull; LIVE FEED</span>
       </div>
       <div class="flex items-center gap-2">
+        <button id="refreshBtn" onclick="loadReportData()" class="px-3 py-1.5 rounded-lg border border-neutral-300 hover:border-ink hover:text-ink transition bg-white/70 backdrop-blur-sm flex items-center gap-1.5" title="최신 data.json 다시 불러오기">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span>새로고침</span>
+        </button>
         <button id="copySummaryBtn" onclick="copyMacroSummary()" class="px-3 py-1.5 rounded-lg border border-neutral-300 hover:border-ink hover:text-ink transition bg-white/70 backdrop-blur-sm flex items-center gap-1.5" title="전체 브리핑 텍스트 클립보드 복사">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
           <span>브리프 요약 복사</span>
@@ -151,16 +167,16 @@
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
           <span>PDF / 인쇄</span>
         </button>
-        <button onclick="toggleDataModal(true)" class="px-3 py-1.5 rounded-lg border border-neutral-300 hover:border-ink hover:text-ink transition bg-white/70 backdrop-blur-sm flex items-center gap-1.5" title="JSON 데이터 직접 보기 및 교체">
+        <button onclick="toggleDataModal(true)" class="px-3 py-1.5 rounded-lg border border-neutral-300 hover:border-ink hover:text-ink transition bg-white/70 backdrop-blur-sm flex items-center gap-1.5" title="JSON 데이터 직접 보기 및 임시 교체">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-          <span>데이터 편집</span>
+          <span>데이터 검사</span>
         </button>
       </div>
     </header>
 
     <!-- 동적 대시보드 컨테이너 -->
     <main id="app" class="space-y-12">
-      <!-- JavaScript renderDashboard(reportData) 에 의해 동적 렌더링됩니다 -->
+      <!-- JavaScript loadReportData() 에 의해 로딩 스켈레톤, 정상 화면, 또는 에러 화면이 동적으로 삽입됩니다 -->
     </main>
 
     <!-- 하단 신문 리포트 푸터 (Colophon & Disclaimer) -->
@@ -181,7 +197,7 @@
         <div class="md:text-right font-mono flex flex-col justify-between">
           <div>
             <span class="inline-block px-2 py-0.5 rounded bg-neutral-200 text-neutral-800 text-[10px] font-bold">VERIFIED EDITION</span>
-            <p class="mt-2 text-neutral-500">ISO 8601 Timestamp: <span id="footerTimestamp">2026-10-14</span></p>
+            <p class="mt-2 text-neutral-500">ISO 8601 Timestamp: <span id="footerTimestamp">LATEST</span></p>
           </div>
           <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="no-print mt-4 inline-flex items-center gap-1 self-start md:self-end text-neutral-800 hover:text-black underline underline-offset-4 transition">
             <span>&uarr; 최상단으로 이동</span>
@@ -190,7 +206,7 @@
       </div>
       <div class="pt-4 border-t border-neutral-200/80 flex flex-col sm:flex-row justify-between items-center gap-2 text-neutral-400 font-mono text-[11px]">
         <span>&copy; 2026 DAILY MACRO BRIEF. ALL RIGHTS RESERVED.</span>
-        <span>STANDALONE ZERO-DEPENDENCY CLIENT</span>
+        <span>STANDALONE ASYNC-LOADER CLIENT</span>
       </div>
     </footer>
 
@@ -202,7 +218,7 @@
       <div class="flex items-center justify-between pb-3 border-b border-neutral-200">
         <div>
           <h3 class="font-serif font-bold text-lg text-ink">데이터 소스 관리 (Data Inspector)</h3>
-          <p class="text-xs text-neutral-500 font-dodum">아래 JSON 데이터를 편집 후 '즉시 반영'을 누르면 화면 전체가 실시간 재렌더링됩니다.</p>
+          <p class="text-xs text-neutral-500 font-dodum">현재 로드된 JSON 데이터를 확인하거나 임시로 수정하여 화면에 반영해볼 수 있습니다.</p>
         </div>
         <button onclick="toggleDataModal(false)" class="p-1 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-ink">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -214,15 +230,15 @@
       </div>
 
       <div class="flex items-center justify-between pt-2">
-        <button onclick="resetToInitialData()" class="px-3 py-1.5 text-xs text-neutral-600 hover:text-ink border border-neutral-300 rounded-lg hover:bg-neutral-50 transition">
-          초기 데이터 복원
+        <button onclick="loadReportData(); toggleDataModal(false);" class="px-3 py-1.5 text-xs text-neutral-600 hover:text-ink border border-neutral-300 rounded-lg hover:bg-neutral-50 transition">
+          서버 data.json 재로드
         </button>
         <div class="flex items-center gap-2">
           <button onclick="toggleDataModal(false)" class="px-4 py-2 text-xs text-neutral-600 hover:text-ink border border-neutral-300 rounded-lg hover:bg-neutral-50 transition">
             닫기
           </button>
           <button onclick="applyEditedData()" class="px-4 py-2 text-xs font-semibold bg-ink text-white rounded-lg hover:bg-neutral-800 transition">
-            즉시 반영 (Re-render)
+            임시 반영 (Re-render)
           </button>
         </div>
       </div>
@@ -235,79 +251,162 @@
     <span id="toastMessage">복사되었습니다.</span>
   </div>
 
-  <!-- ========================================== -->
-  <!-- JAVASCRIPT: DATA & DYNAMIC RENDERING LOGIC -->
-  <!-- ========================================== -->
+  <!-- ======================================================= -->
+  <!-- JAVASCRIPT: ASYNCHRONOUS DATA FETCHER & DYNAMIC RENDER -->
+  <!-- ======================================================= -->
   <script>
-    /**
-     * 1. 기본 탑재 초기 데이터 (Embedded Initial Dataset)
-     * 2026년 10월 14일 기준 정제 데이터
-     */
-    const reportData = {
-      "report_date": "2026-10-14",
-      "macro_core_takeaways": [
-        "미국 국채금리 안정 및 주요 빅테크(엔비디아, AMD) 상승 전환으로 글로벌 기술주 중심의 투자심리 부분 회복",
-        "중국 CXMT의 서버용 D램 진입 발표와 AI 투자 자금 부담으로 메모리 반도체 섹터의 단기 변동성 확대 후 기술적 반등 시도",
-        "원/달러 환율(-0.46%) 하락 및 코스피(+0.82%) 반등 속에서 반도체 대형주 중심의 저가 매수 유입과 소부장 선별 매매 진행"
-      ],
-      "market_indicators": [
-        { "name": "코스피", "value": "6,082.90", "change": "+49.50", "change_rate": "+0.82%" },
-        { "name": "코스닥", "value": "833.15", "change": "-3.94", "change_rate": "-0.47%" },
-        { "name": "원/달러 환율", "value": "1,336.80", "change": "-6.18", "change_rate": "-0.46%" },
-        { "name": "WTI 원유", "value": "78.20", "change": "-0.95", "change_rate": "-1.2%" }
-      ],
-      "top_news": [
-        {
-          "id": 1,
-          "title": "SK하이닉스 수익률 상위 1% 순매수 1위 기록 및 반도체 소부장 차별화",
-          "sector": "반도체 / IT 하드웨어",
-          "observed_fact": "미래에셋증권 상위 1% 투자자 집계에서 SK하이닉스가 순매수 1위를 기록(오전 11시 기준 2.08% 상승한 147만 3000원 거래). 소부장 중 티에스이(-1.52%), 티엘비(-5.85%), 원익IPS(-4.83%)는 순매수 상위에 오른 반면, 주성엔지니어링(-3.82%), 이오테크닉스(-3.95%) 등은 순매도 상위 기록.",
-          "transmission_pathway": "CXMT 진입 우려로 전 거래일 코스피(-5.46%) 및 SK하이닉스(-10.09%)가 급락한 후, 미국 기술주 반등과 맞물려 메모리 대형주로 저가 매수세가 유입됨. 소부장 섹터 내부에서는 전공정 및 기상승 종목 대비 후공정 및 실적 가시성 중심의 포트폴리오 리밸런싱 발생.",
-          "falsification_condition": "중국 CXMT의 서버용 D램 양산 수율이 조기 안정화되어 글로벌 주요 하이퍼스케일러 고객사 승인 및 대규모 실제 출하가 데이터로 확인되는 경우",
-          "analyst_tip": "대형주 반등 국면에서는 지수 추종보다 후공정 패키징/테스트 밸류체인의 수율 공시를 면밀히 점검할 필요가 있습니다."
-        },
-        {
-          "id": 2,
-          "title": "삼성전자 이재용 회장, 4.5조 원 규모 지분 장외매수 및 증여 공시",
-          "sector": "기업지배구조 / 반도체",
-          "observed_fact": "삼성전자 지분 공시에 따르면 이재용 회장은 10월 12일 홍라희 명예관장으로부터 보통주 766만 7100주(주당 25만 500원, 총 1조 9206억 원)를 장외매수함. 또한 11월 12일 보통주 1115만 8000주(전일 종가 기준 약 2조 5887억 원)를 증여받을 예정이며, 증여 완료 시 보통주·우선주 합산 지분율은 1.75%로 확대됨.",
-          "transmission_pathway": "오너 일가의 대규모 지분 승계 및 장외 거래 완료로 지배구조 관련 지분 출회 불확실성이 일정 부분 해소됨. 상장주식 증여세 산정 기준(증여일 전후 2개월 시세 평균)에 따라 향후 대규모 세금 납부(추산 1.55조 원 이상) 재원 마련을 위한 배당 확대 등 주주환원 정책 강화 유인 증가.",
-          "falsification_condition": "증여 기준일(11월 12일) 전후 2개월간 평균 주가 산정 기간 내 주가 급락세가 지속되어 증여 계획이 철회 또는 변경되거나, 증권사 추정 4분기 실적을 대폭 하회하는 어닝 쇼크가 발생하는 경우",
-          "analyst_tip": "증여세 산정 기간(9월~익년 1월) 동안의 주가 밴드와 향후 배당 성향 발표를 연결하여 확인하십시오."
-        },
-        {
-          "id": 3,
-          "title": "메모리 대형주 반등 및 증권가 4분기 실적 전망 유지",
-          "sector": "반도체 / 메모리",
-          "observed_fact": "14일 장 초반 삼성전자는 3.66% 상승한 24만 500원에, SK하이닉스는 2.43% 상승 거래됨. KB증권은 삼성전자 4분기 영업이익을 114조 원(전분기 대비 +6%), 유진투자증권은 118조 8000억 원으로 추정 제시.",
-          "transmission_pathway": "HBM 고도화 및 HBM4 단가 인상 전망에 기반한 실적 유지 분석이 나오면서 메모리 공급과잉 공포가 완화됨. 실적 추정치와 잉여현금흐름(FCF) 50%를 상회하는 주주환원 확대 기대감이 반도체 대형주 중심의 가격 반등 경로로 작용.",
-          "falsification_condition": "HBM4 납품 단가 인상 실패 또는 차세대 HBM 수율 저하로 인해 4분기 실제 영업이익이 전분기 대비 역성장하는 경우",
-          "analyst_tip": "실적 발표 시즌 전 주요 고객사의 차세대 AI 가속기 탑재 일정 변동 여부를 우선 체크하십시오."
-        },
-        {
-          "id": 4,
-          "title": "중국 CXMT 서버용 D램 시장 진입 발표에 따른 메모리 공급망 반응",
-          "sector": "글로벌 IT 공급망 / 메모리 반도체",
-          "observed_fact": "중국 CXMT의 서버용 D램 출시 계획이 시장에 전해졌으며, 기존 메모리 3사(삼성전자, SK하이닉스, 마이크론) 주가에 공급 확대 우려로 반영됨.",
-          "transmission_pathway": "HBM 생산능력 전환으로 인한 레거시 D램 공급 타이트 현상을 완화할 가능성이 제기되나, 신규 팹 가동 속도 및 고객사 퀄 테스트 소요 시간으로 인해 단기 공급 충격보다는 중장기 중저가 D램 시장에서의 판가 압박 경로로 형성.",
-          "falsification_condition": "글로벌 Tier-1 서버 제조사가 CXMT의 서버용 D램 채택을 공식화하고 계약 물량이 공시되는 경우",
-          "analyst_tip": "서버용 D램의 신뢰성 검증 기간(통상 6~12개월) 동안의 글로벌 데이터센터 CAPEX 집행 방향을 모니터링해야 합니다."
-        },
-        {
-          "id": 5,
-          "title": "반도체 소부장 공정별 매매 차별화(전공정 vs 후공정)",
-          "sector": "반도체 장비 / 부품",
-          "observed_fact": "소부장 내에서 후공정 및 기판 관련주(티에스이, 티엘비)로 매수세가 유입된 반면, 전공정 장비 및 기상승주(주성엔지니어링, 이오테크닉스)는 순매도 상위에 위치.",
-          "transmission_pathway": "HBM 중심의 생산 라인 가동률 유지 전망에 따라 증설 투자(CAPEX) 의존도가 높은 전공정 장비 대비 패키징·테스트 등 가동률과 직결된 후공정 부품·소재 기업으로 투자 자금이 이동하는 밸류체인 내 수익성 재평가 진행.",
-          "falsification_condition": "주요 메모리 제조사가 HBM 및 D램 신규 웨이퍼 팹(전공정) 증설 인프라 투자를 대규모로 상향 발표하는 경우",
-          "analyst_tip": "장비 업체의 신규 수주 공시 주기와 소재/부품 업체의 분기 가동률 지표의 괴리를 주기적으로 대조하십시오."
-        }
-      ]
-    };
-
-    // 실시간 상태 관리
-    let currentData = JSON.parse(JSON.stringify(reportData));
+    // 현재 로드된 리포트 데이터 및 필터 상태
+    let currentData = null;
     let selectedSector = "ALL";
+
+    /**
+     * 1. 비동기 데이터 로더 (fetch API + Cache Busting)
+     * 캐시 버스팅 쿼리(?v=timestamp)를 통해 항상 최신의 data.json을 불러옵니다.
+     */
+    async function loadReportData() {
+      const appContainer = document.getElementById("app");
+      const liveFeedDot = document.getElementById("liveFeedDot");
+      const liveFeedStatus = document.getElementById("liveFeedStatus");
+
+      // A. 로딩 상태 스켈레톤 UI 렌더링
+      renderLoadingState(appContainer);
+      if (liveFeedDot) liveFeedDot.className = "inline-block w-2 h-2 rounded-full bg-amber-500 animate-ping";
+      if (liveFeedStatus) liveFeedStatus.textContent = "MACRO INTELLIGENCE SYSTEM • FETCHING DATA...";
+
+      try {
+        // 캐시 버스팅 쿼리스트링 생성
+        const cacheBuster = new Date().getTime();
+        const dataUrl = `./data.json?v=${cacheBuster}`;
+
+        const response = await fetch(dataUrl, {
+          cache: 'no-cache',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP Error ${response.status}: ${response.statusText} ('${dataUrl}'을 찾을 수 없습니다)`);
+        }
+
+        const data = await response.json();
+
+        // 필수 데이터 형식 유효성 점검
+        if (!data || !data.report_date || !Array.isArray(data.macro_core_takeaways)) {
+          throw new Error("가져온 data.json의 데이터 규격이 올바르지 않습니다.");
+        }
+
+        currentData = data;
+        selectedSector = "ALL";
+
+        // B. 정상 데이터 화면 렌더링
+        renderDashboard(currentData);
+
+        if (liveFeedDot) liveFeedDot.className = "inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+        if (liveFeedStatus) liveFeedStatus.textContent = `MACRO INTELLIGENCE SYSTEM • SYNCED (${currentData.report_date})`;
+
+      } catch (err) {
+        console.error("데이터 로드 실패:", err);
+        // C. 에러 상태 UI 렌더링
+        renderErrorState(appContainer, err);
+
+        if (liveFeedDot) liveFeedDot.className = "inline-block w-2 h-2 rounded-full bg-rose-500";
+        if (liveFeedStatus) liveFeedStatus.textContent = "MACRO INTELLIGENCE SYSTEM • LOAD ERROR";
+      }
+    }
+
+    /**
+     * 2. 로딩 상태 스켈레톤 UI 렌더링 함수
+     */
+    function renderLoadingState(container) {
+      if (!container) return;
+
+      container.innerHTML = `
+        <div class="space-y-12 animate-pulse">
+          
+          <!-- 스켈레톤 매스티드 -->
+          <div class="text-center py-6 space-y-4">
+            <div class="h-3 w-64 skeleton-box mx-auto"></div>
+            <div class="h-14 w-3/4 max-w-lg skeleton-box mx-auto"></div>
+            <div class="h-4 w-72 skeleton-box mx-auto"></div>
+            <div class="h-10 w-full skeleton-box mt-4"></div>
+          </div>
+
+          <!-- 스켈레톤 오늘의 핵심 -->
+          <div class="space-y-3">
+            <div class="h-6 w-48 skeleton-box"></div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="glass-card p-5 h-40 skeleton-box"></div>
+              <div class="glass-card p-5 h-40 skeleton-box"></div>
+              <div class="glass-card p-5 h-40 skeleton-box"></div>
+            </div>
+          </div>
+
+          <!-- 스켈레톤 시장 지표 -->
+          <div class="space-y-3">
+            <div class="h-6 w-48 skeleton-box"></div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="glass-card p-5 h-28 skeleton-box"></div>
+              <div class="glass-card p-5 h-28 skeleton-box"></div>
+              <div class="glass-card p-5 h-28 skeleton-box"></div>
+              <div class="glass-card p-5 h-28 skeleton-box"></div>
+            </div>
+          </div>
+
+          <!-- 스켈레톤 뉴스 카드 -->
+          <div class="space-y-4">
+            <div class="h-6 w-48 skeleton-box"></div>
+            <div class="news-card p-6 h-64 skeleton-box"></div>
+            <div class="news-card p-6 h-64 skeleton-box"></div>
+          </div>
+
+        </div>
+      `;
+    }
+
+    /**
+     * 3. 에러 상태 UI 렌더링 함수
+     */
+    function renderErrorState(container, error) {
+      if (!container) return;
+
+      container.innerHTML = `
+        <div class="py-16 px-4">
+          <div class="max-w-xl mx-auto glass-card p-8 md:p-10 text-center space-y-6 border border-neutral-300 shadow-xl">
+            
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-neutral-100 border border-neutral-300 text-neutral-800 mx-auto">
+              <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+            </div>
+
+            <div class="space-y-2">
+              <h2 class="font-serif font-bold text-xl md:text-2xl text-ink">
+                데이터를 불러오는 중 오류가 발생했습니다.
+              </h2>
+              <p class="font-dodum text-sm text-subtext leading-relaxed">
+                최신 리포트를 확인해 주세요. 동일 디렉터리의 <code class="font-mono bg-neutral-200/80 px-1.5 py-0.5 rounded text-neutral-800">data.json</code> 파일이 존재하는지, 또는 JSON 문법에 오류가 없는지 점검이 필요합니다.
+              </p>
+            </div>
+
+            <div class="p-3 bg-neutral-100 rounded-lg text-left font-mono text-xs text-neutral-600 overflow-x-auto border border-neutral-200">
+              <span class="text-neutral-400 select-none">Error details:</span> ${error ? error.message : 'Unknown Network Error'}
+            </div>
+
+            <div class="pt-2 flex flex-wrap items-center justify-center gap-3">
+              <button onclick="loadReportData()" class="px-5 py-2.5 rounded-xl bg-ink text-white font-medium text-xs hover:bg-neutral-800 transition flex items-center gap-2 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span>다시 시도 (Retry)</span>
+              </button>
+              <button onclick="toggleDataModal(true)" class="px-4 py-2.5 rounded-xl border border-neutral-300 bg-white text-neutral-700 text-xs hover:border-ink hover:text-ink transition">
+                <span>데이터 직접 입력/검사</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      `;
+    }
 
     /**
      * 날짜 포맷 헬퍼 (YYYY-MM-DD -> 요일 및 영문 레이블 생성)
@@ -430,15 +529,14 @@
         const isUp = ind.change && ind.change.trim().startsWith('+');
         const isDown = ind.change && ind.change.trim().startsWith('-');
         
-        // 미니멀 모노톤 색상 규칙 (채도를 낮춘 묵직한 톤 유지)
         let badgeStyle = "bg-neutral-100 text-neutral-800 border-neutral-200";
         let symbol = "&bull;";
         if (isUp) {
           symbol = "▲";
-          badgeStyle = "bg-neutral-200 text-neutral-900 border-neutral-300"; // Muted Charcoal
+          badgeStyle = "bg-neutral-200 text-neutral-900 border-neutral-300";
         } else if (isDown) {
           symbol = "▼";
-          badgeStyle = "bg-neutral-100 text-neutral-600 border-neutral-200"; // Soft Ash Slate
+          badgeStyle = "bg-neutral-100 text-neutral-600 border-neutral-200";
         }
 
         return `
@@ -489,16 +587,12 @@
      */
     function renderTopNews(data) {
       const allNews = data.top_news || [];
-
-      // 고유 섹터 리스트 추출 (필터 바용)
       const sectors = Array.from(new Set(allNews.map(n => n.sector).filter(Boolean)));
 
-      // 선택된 섹터 필터 적용
       const filteredNews = selectedSector === "ALL" 
         ? allNews 
         : allNews.filter(n => n.sector === selectedSector);
 
-      // 섹터 필터 버튼 렌더링
       const sectorButtonsHtml = `
         <div class="no-print flex flex-wrap items-center gap-1.5 py-1 text-xs font-mono">
           <button onclick="setSectorFilter('ALL')" class="px-2.5 py-1 rounded-md border transition ${selectedSector === 'ALL' ? 'bg-ink text-white border-ink' : 'bg-white/80 text-neutral-600 border-neutral-300 hover:border-neutral-500'}">
@@ -512,7 +606,6 @@
         </div>
       `;
 
-      // 뉴스 카드 생성
       const newsCardsHtml = filteredNews.map((news, index) => {
         const itemNumber = String(news.id || (index + 1)).padStart(2, '0');
 
@@ -562,7 +655,7 @@
                 </p>
               </div>
 
-              <!-- 3. 기각 조건 (Falsification Condition) : 뚜렷한 시각적 콜아웃 박스 -->
+              <!-- 3. 기각 조건 (Falsification Condition) : 시각적 콜아웃 박스 -->
               <div class="falsification-box p-4 my-1">
                 <div class="flex items-center gap-1.5 font-mono text-xs font-bold text-neutral-900 uppercase tracking-wider mb-1.5">
                   <svg class="w-4 h-4 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -614,8 +707,7 @@
     }
 
     /**
-     * 전체 대시보드 오케스트레이션 렌더링 함수
-     * data 파라미터만 교체하면 화면 전체가 자동으로 다시 렌더링됩니다.
+     * 전체 대시보드 렌더링 함수
      */
     function renderDashboard(data) {
       if (!data) return;
@@ -623,7 +715,6 @@
       const appContainer = document.getElementById("app");
       if (!appContainer) return;
 
-      // 동적 HTML 템플릿 조합
       appContainer.innerHTML = `
         ${renderMasthead(data)}
         ${renderTakeaways(data)}
@@ -631,7 +722,6 @@
         ${renderTopNews(data)}
       `;
 
-      // 푸터 타임스탬프 동기화
       const footerTimestamp = document.getElementById("footerTimestamp");
       if (footerTimestamp && data.report_date) {
         footerTimestamp.textContent = data.report_date;
@@ -643,14 +733,19 @@
      */
     function setSectorFilter(sector) {
       selectedSector = sector;
-      renderDashboard(currentData);
+      if (currentData) {
+        renderDashboard(currentData);
+      }
     }
 
     /**
      * 클립보드에 전체 브리핑 요약 텍스트 복사 (Slack, 이메일, 메신저 공유용)
      */
     function copyMacroSummary() {
-      if (!currentData) return;
+      if (!currentData) {
+        showToast("데이터가 아직 로드되지 않았습니다.");
+        return;
+      }
 
       const dateStr = currentData.report_date || "2026-10-14";
       let summaryText = `[DAILY MACRO BRIEF] 데일리 경제 브리프 (${dateStr})\n\n`;
@@ -681,7 +776,7 @@
     }
 
     /**
-     * 간단한 토스트 알림 표시
+     * 토스트 알림 표시
      */
     function showToast(msg) {
       const toast = document.getElementById("toast");
@@ -707,7 +802,7 @@
       if (!modal || !textarea) return;
 
       if (show) {
-        textarea.value = JSON.stringify(currentData, null, 2);
+        textarea.value = currentData ? JSON.stringify(currentData, null, 2) : "{}";
         modal.classList.remove("hidden");
         modal.classList.add("flex");
       } else {
@@ -717,7 +812,7 @@
     }
 
     /**
-     * 편집된 JSON 데이터 적용 및 전체 재렌더링
+     * 편집된 JSON 데이터 즉시 반영
      */
     function applyEditedData() {
       const textarea = document.getElementById("jsonEditor");
@@ -729,29 +824,15 @@
         selectedSector = "ALL";
         renderDashboard(currentData);
         toggleDataModal(false);
-        showToast("새로운 데이터가 성공적으로 반영되었습니다.");
+        showToast("편집된 데이터가 화면에 즉시 반영되었습니다.");
       } catch (err) {
         alert("JSON 문법 오류가 발생했습니다: " + err.message);
       }
     }
 
-    /**
-     * 초기 데이터로 복원
-     */
-    function resetToInitialData() {
-      currentData = JSON.parse(JSON.stringify(reportData));
-      const textarea = document.getElementById("jsonEditor");
-      if (textarea) {
-        textarea.value = JSON.stringify(currentData, null, 2);
-      }
-      selectedSector = "ALL";
-      renderDashboard(currentData);
-      showToast("초기 데이터로 복원되었습니다.");
-    }
-
-    // 문서 준비 시 초기 렌더링 실행
+    // 문서 준비 시 비동기 fetch 호출 실행
     document.addEventListener("DOMContentLoaded", () => {
-      renderDashboard(currentData);
+      loadReportData();
     });
   </script>
 </body>
