@@ -1,0 +1,47 @@
+name: Daily Macro Economic News Brief Pipeline
+
+on:
+  schedule:
+      - cron: '0 23 * * *'
+        workflow_dispatch:
+
+        permissions:
+          contents: write
+
+          jobs:
+            update-news:
+                runs-on: ubuntu-latest
+
+                    steps:
+                          - name: Checkout repository
+                                  uses: actions/checkout@v4
+
+                                        - name: Setup Python 3.11
+                                                uses: actions/setup-python@v5
+                                                        with:
+                                                                  python-version: '3.11'
+                                                                            cache: 'pip'
+
+                                                                                  - name: Install dependencies
+                                                                                          run: |
+                                                                                                    python -m pip install --upgrade pip
+                                                                                                              pip install -r requirements.txt
+                                                                                                              
+                                                                                                                    - name: Run news crawler and Gemini API cleaner
+                                                                                                                            env:
+                                                                                                                                      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+                                                                                                                                              run: |
+                                                                                                                                                        python update_news.py
+                                                                                                                                                        
+                                                                                                                                                              - name: Commit and push updated data.json
+                                                                                                                                                                      run: |
+                                                                                                                                                                                git config --local user.email "github-actions[bot]@users.noreply.github.com"
+                                                                                                                                                                                          git config --local user.name "github-actions[bot]"
+                                                                                                                                                                                                    git add data.json
+                                                                                                                                                                                                              if git diff --staged --quiet; then
+                                                                                                                                                                                                                          echo "No changes to update."
+                                                                                                                                                                                                                                    else
+                                                                                                                                                                                                                                                git commit -m "chore: auto-update daily economic brief [$(date +'%Y-%m-%d')]"
+                                                                                                                                                                                                                                                            git push origin main
+                                                                                                                                                                                                                                                                      fi
+                                                                                                                                                                                                                                                                      
