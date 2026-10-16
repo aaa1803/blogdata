@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import time
 from datetime import datetime
 import zoneinfo
 import urllib.request
@@ -83,16 +84,35 @@ system_prompt = f"""당신은 최고 수준의 거시경제 데이터 애널리�
 
 user_prompt = f"다음 기사 목록을 분석하여 위 스키마에 맞는 유효한 JSON을 생성하세요:\n\n{news_context}"
 
-# 4. 최신 gemini-3.8-flash 모델 호출
-response = client.models.generate_content(
-    model='gemini-3.8-flash',
-    contents=user_prompt,
-    config=types.GenerateContentConfig(
-        system_instruction=system_prompt,
-        response_mime_type="application/json",
-        temperature=0.2,
-    ),
-)
+# 4. 최신 gemini-3.8-flash 모델 우선 호출 (트래픽 급증 시 재시도 및 폴백 지원)
+candidate_models = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash']
+response = None
+
+for model_name in candidate_models:
+    for attempt in range(1, 4):
+        try:
+            print(f"[{model_name}] API 호출 시도 ({attempt}/3)...")
+            response = client.models.generate_content(
+                model=model_name,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    response_mime_type="application/json",
+                    temperature=0.2,
+                ),
+            )
+            if response and response.text:
+                print(f"[{model_name}] 모델 응답 수신 완료!")
+                break
+        except Exception as e:
+            print(f"[{model_name}] 호출 중 오류 (시도 {attempt}/3): {e}")
+            if attempt < 3:
+                time.sleep(3)
+    if response and response.text:
+        break
+
+if not response or not response.text:
+    raise RuntimeError("Gemini API 호출에 모두 실패했습니다.")
 
 result_text = response.text.strip()
 if result_text.startswith("```json"):
